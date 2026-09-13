@@ -16025,5 +16025,83 @@
             }
         }
     </script>
+    <script>
+        function getCopyQuestion(view) {
+            if (view === 'exam') {
+                return currentSessionPool[currentExamIndex];
+            }
+
+            const answeredQuestionsList = RAW_QUESTIONS.filter(q => answeredStore[q.id] !== undefined);
+            return answeredQuestionsList[currentReviewIndex];
+        }
+
+        function buildCopyText(question) {
+            const options = question.options
+                .map(option => `${option.label}) ${option.text}`)
+                .join('\n');
+            const correctAnswer = question.options
+                .filter(option => question.answer.includes(option.label))
+                .map(option => `${option.label}) ${option.text}`)
+                .join('\n');
+
+            return `Question:\n${question.question}\n\nOptions:\n${options}\n\nCorrect Answer:\n${correctAnswer}`;
+        }
+
+        function copyQuestion(button) {
+            const question = getCopyQuestion(button.dataset.copyView);
+            if (!question) return;
+
+            const text = buildCopyText(question);
+            const showCopied = () => {
+                button.innerText = 'Copied!';
+                window.setTimeout(() => {
+                    button.innerText = 'Copy';
+                }, 1500);
+            };
+            const fallbackCopy = () => {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                textArea.remove();
+                showCopied();
+            };
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(showCopied).catch(fallbackCopy);
+            } else {
+                fallbackCopy();
+            }
+        }
+
+        function addCopyButton(questionTextId, view) {
+            const questionText = document.getElementById(questionTextId);
+            const questionHeader = questionText?.previousElementSibling;
+            const badgeGroup = questionHeader?.firstElementChild;
+            if (!questionText || !badgeGroup || badgeGroup.querySelector('.question-copy-button')) return;
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.innerText = 'Copy';
+            button.dataset.copyView = view;
+            button.className = 'question-copy-button ml-1 px-3 py-1 rounded-lg border border-slate-300 text-slate-700 text-xs font-semibold hover:bg-slate-50 transition-all';
+            button.addEventListener('click', () => copyQuestion(button));
+            badgeGroup.appendChild(button);
+        }
+
+        const copyButtonObserver = new MutationObserver(() => {
+            addCopyButton('question-text', 'exam');
+            addCopyButton('review-question-text', 'review');
+        });
+
+        copyButtonObserver.observe(document.body, { childList: true, subtree: true });
+        document.addEventListener('DOMContentLoaded', () => {
+            addCopyButton('question-text', 'exam');
+            addCopyButton('review-question-text', 'review');
+        });
+    </script>
 </body>
 </html>
